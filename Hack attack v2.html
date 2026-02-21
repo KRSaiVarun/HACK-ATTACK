@@ -1,0 +1,1307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HACK ATTACK v2.0 — Cyber Awareness Simulation</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=Orbitron:wght@400;700;900&family=Rajdhani:wght@300;400;600;700&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<style>
+/* ═══════════════════════════════════════════════
+   ROOT & THEME
+═══════════════════════════════════════════════ */
+:root {
+  --green:#00ff41; --red:#ff003c; --cyan:#00e5ff;
+  --yellow:#ffd600; --orange:#ff6600;
+  --bg:#010a01; --panel:#050f05;
+  --border:#00ff4120; --dim:#00ff4150;
+  --glow-g: 0 0 20px #00ff4180; --glow-r: 0 0 20px #ff003c80;
+}
+body.paranoid {
+  --green:#ff2200; --cyan:#ff6600; --bg:#0a0000;
+  --panel:#0f0000; --border:#ff220020; --dim:#ff220050;
+}
+
+*{margin:0;padding:0;box-sizing:border-box;}
+html{scroll-behavior:smooth;}
+
+body {
+  background:var(--bg);
+  color:var(--green);
+  font-family:'Share Tech Mono',monospace;
+  overflow-x:hidden;
+  transition:background 0.6s, color 0.6s;
+}
+
+/* custom cursor */
+*, *::before, *::after { cursor: none !important; }
+#cursor {
+  position:fixed; width:16px; height:16px;
+  border:1px solid var(--green); border-radius:50%;
+  pointer-events:none; z-index:99999;
+  transform:translate(-50%,-50%);
+  transition:width 0.15s, height 0.15s, border-color 0.15s;
+  mix-blend-mode:difference;
+}
+#cursor-dot {
+  position:fixed; width:4px; height:4px;
+  background:var(--green); border-radius:50%;
+  pointer-events:none; z-index:99999;
+  transform:translate(-50%,-50%);
+}
+/* mouse trail canvas */
+#trail-canvas {
+  position:fixed; inset:0; pointer-events:none; z-index:9990;
+}
+
+/* scanlines */
+body::before {
+  content:''; position:fixed; inset:0;
+  background:repeating-linear-gradient(0deg,transparent,transparent 2px,rgba(0,255,65,.012) 2px,rgba(0,255,65,.012) 4px);
+  pointer-events:none; z-index:9997;
+}
+
+/* ═══ INTRO ═══ */
+#intro {
+  position:fixed; inset:0; background:#000;
+  z-index:10000; display:flex; flex-direction:column;
+  align-items:center; justify-content:center; gap:20px;
+}
+#intro-warning {
+  font-family:'Orbitron',monospace;
+  font-size:clamp(9px,1.4vw,12px);
+  color:#ff003c90; letter-spacing:3px; text-transform:uppercase;
+  border:1px solid #ff003c40; padding:7px 18px;
+  animation:pulseW 2s infinite;
+}
+@keyframes pulseW{0%,100%{opacity:.6}50%{opacity:1}}
+#intro-title {
+  font-family:'Orbitron',monospace;
+  font-size:clamp(30px,8vw,88px); font-weight:900;
+  letter-spacing:8px; color:var(--green);
+  text-shadow:0 0 30px var(--green),0 0 60px #00ff4150;
+  position:relative;
+  animation:gT .3s infinite;
+}
+#intro-title::before,#intro-title::after {
+  content:'HACK ATTACK'; position:absolute; inset:0;
+  clip-path:polygon(0 30%,100% 30%,100% 50%,0 50%);
+}
+#intro-title::before{color:var(--red);animation:gR .4s infinite;}
+#intro-title::after {color:var(--cyan);animation:gC .5s infinite;}
+@keyframes gT{0%,100%{transform:none}50%{transform:skewX(-1deg)}}
+@keyframes gR{0%,100%{transform:translateX(-4px)}50%{transform:translateX(4px)}}
+@keyframes gC{0%,100%{transform:translateX(4px)}50%{transform:translateX(-4px)}}
+#terminal-lines{font-size:clamp(10px,1.2vw,13px);text-align:center;line-height:2.2;opacity:0;animation:fadeIn .5s .5s forwards;}
+@keyframes fadeIn{to{opacity:1}}
+#progress-wrap{width:min(480px,80vw);border:1px solid var(--dim);height:5px;overflow:hidden;}
+#progress-bar{height:100%;background:linear-gradient(90deg,#00ff41,#00e5ff);width:0%;box-shadow:0 0 12px var(--green);transition:width .04s linear;}
+#progress-label{font-size:11px;color:var(--dim);letter-spacing:2px;margin-top:5px;text-align:center;}
+#skip-btn{position:fixed;bottom:24px;right:24px;background:transparent;border:1px solid var(--dim);color:var(--dim);font-family:'Share Tech Mono',monospace;font-size:11px;letter-spacing:2px;padding:7px 14px;cursor:pointer!important;transition:all .3s;z-index:10001;}
+#skip-btn:hover{border-color:var(--green);color:var(--green);}
+#glitch-flash{position:fixed;inset:0;background:var(--green);z-index:9996;opacity:0;pointer-events:none;transition:opacity .1s;}
+
+/* ═══ NAV ═══ */
+nav {
+  position:fixed; top:0; width:100%;
+  padding:14px 36px; display:flex;
+  justify-content:space-between; align-items:center;
+  border-bottom:1px solid var(--border);
+  background:rgba(1,10,1,.92); backdrop-filter:blur(12px);
+  z-index:500;
+}
+.nav-logo{font-family:'Orbitron',monospace;font-size:13px;font-weight:900;letter-spacing:4px;color:var(--green);text-shadow:var(--glow-g);}
+.nav-right{display:flex;gap:16px;align-items:center;}
+.nav-status{font-size:10px;color:var(--red);letter-spacing:2px;animation:blink 1s infinite;display:flex;align-items:center;gap:6px;}
+.nav-status::before{content:'●';}
+@keyframes blink{0%,100%{opacity:1}50%{opacity:.3}}
+
+/* MODE TOGGLE */
+.mode-toggle {
+  background:transparent; border:1px solid var(--dim);
+  color:var(--dim); font-family:'Share Tech Mono',monospace;
+  font-size:10px; letter-spacing:2px; padding:5px 12px;
+  cursor:pointer!important; transition:all .3s;
+}
+.mode-toggle:hover,.mode-toggle.active{border-color:var(--red);color:var(--red);}
+
+/* ALERT BTN */
+.alert-btn {
+  background:transparent; border:1px solid var(--red);
+  color:var(--red); font-family:'Share Tech Mono',monospace;
+  font-size:10px; letter-spacing:2px; padding:5px 12px;
+  cursor:pointer!important; transition:all .3s; animation:pulseW 2s infinite;
+}
+.alert-btn:hover{background:var(--red);color:#000;}
+
+/* ═══ MAIN ═══ */
+main{opacity:0;transition:opacity .8s;}
+main.visible{opacity:1;}
+
+section {
+  min-height:100vh; padding:100px 40px 80px;
+  max-width:1100px; margin:0 auto;
+  display:flex; flex-direction:column; justify-content:center;
+  position:relative;
+}
+
+.section-tag{font-size:10px;letter-spacing:4px;color:var(--dim);text-transform:uppercase;margin-bottom:12px;}
+
+h2 {
+  font-family:'Orbitron',monospace;
+  font-size:clamp(22px,4vw,46px); font-weight:900;
+  line-height:1.1; margin-bottom:36px; letter-spacing:2px;
+  position:relative; display:inline-block;
+}
+h2 span{color:var(--cyan);}
+/* glitch hover on headings */
+h2[data-glitch]:hover{animation:hoverGlitch .15s steps(1) infinite;}
+@keyframes hoverGlitch{
+  0%{text-shadow:2px 0 var(--red),-2px 0 var(--cyan);}
+  25%{text-shadow:-2px 0 var(--red),2px 0 var(--cyan); transform:skewX(-2deg);}
+  50%{text-shadow:2px -1px var(--cyan),-2px 1px var(--red);}
+  75%{text-shadow:-1px 1px var(--red),1px -1px var(--cyan); transform:skewX(2deg);}
+  100%{text-shadow:none; transform:none;}
+}
+
+p.lead{font-family:'Rajdhani',sans-serif;font-size:clamp(15px,1.7vw,19px);color:#aaffaa;line-height:1.8;max-width:700px;}
+
+.divider{width:100%;border:none;border-top:1px solid var(--border);margin:0;}
+
+.fade-up{opacity:0;transform:translateY(30px);transition:opacity .7s,transform .7s;}
+.fade-up.visible{opacity:1;transform:translateY(0);}
+
+/* ═══ HERO ═══ */
+#hero{min-height:100vh;align-items:flex-start;gap:20px;overflow:hidden;}
+#globe-canvas{position:absolute;top:0;right:-100px;width:600px;height:600px;opacity:.7;pointer-events:none;}
+#particle-canvas{position:absolute;inset:0;pointer-events:none;opacity:.5;}
+#matrix-canvas{position:absolute;inset:0;opacity:.06;pointer-events:none;}
+#hero>*:not(canvas){position:relative;z-index:1;}
+
+.hero-subtitle{font-family:'Orbitron',monospace;font-size:clamp(9px,1.2vw,12px);letter-spacing:6px;color:var(--red);border-left:3px solid var(--red);padding-left:14px;text-transform:uppercase;}
+.hero-title{font-family:'Orbitron',monospace;font-size:clamp(30px,6vw,70px);font-weight:900;line-height:1;letter-spacing:2px;text-shadow:0 0 40px #00ff4180;}
+.hero-title .accent{color:var(--red);text-shadow:0 0 30px #ff003c80;}
+.hero-body{font-family:'Rajdhani',sans-serif;font-size:clamp(15px,1.5vw,18px);color:#77bb77;line-height:1.9;max-width:580px;}
+
+.terminal-box{background:#000d00;border:1px solid var(--border);padding:18px 22px;font-size:12px;line-height:2;max-width:520px;box-shadow:0 0 30px #00ff4108,inset 0 0 20px #00ff4105;position:relative;}
+.terminal-box::before{content:'● ● ●';position:absolute;top:8px;left:14px;font-size:9px;color:#ff003c60;letter-spacing:6px;}
+.terminal-box .t-line{padding-top:16px;}
+.terminal-box .prompt{color:var(--dim);}
+.terminal-box .cmd{color:var(--cyan);}
+.terminal-box .out{color:var(--red);}
+.terminal-box .ok{color:var(--green);}
+
+.scroll-hint{font-size:10px;color:var(--dim);letter-spacing:3px;animation:bounce 2s infinite;margin-top:16px;}
+@keyframes bounce{0%,100%{transform:translateY(0)}50%{transform:translateY(6px)}}
+
+/* ═══ THREAT MONITOR ═══ */
+#threat-monitor{background:#000;border-top:2px solid var(--red);border-bottom:2px solid var(--red);min-height:auto;padding:60px 40px;}
+.monitor-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:24px;margin-bottom:40px;}
+.stat-card{background:var(--panel);border:1px solid #ff003c30;padding:24px;text-align:center;position:relative;overflow:hidden;transition:border-color .3s;}
+.stat-card.pulse{border-color:var(--red);box-shadow:0 0 20px #ff003c40;}
+.stat-card::before{content:'';position:absolute;top:0;left:0;right:0;height:1px;background:linear-gradient(90deg,transparent,var(--red),transparent);animation:scanLine 2s linear infinite;}
+@keyframes scanLine{0%{transform:scaleX(0) translateX(-100%)}100%{transform:scaleX(1) translateX(100%)}}
+.stat-icon{font-size:24px;margin-bottom:8px;display:block;}
+.stat-label{font-size:9px;letter-spacing:3px;color:#ff003c80;text-transform:uppercase;margin-bottom:8px;}
+.stat-value{font-family:'Orbitron',monospace;font-size:clamp(20px,3vw,32px);font-weight:900;color:var(--red);text-shadow:0 0 15px #ff003c80;letter-spacing:2px;}
+.stat-sub{font-size:9px;color:#ff003c50;letter-spacing:1px;margin-top:4px;}
+
+/* Log feed */
+.log-feed{background:#000;border:1px solid #ff003c20;padding:16px 20px;font-size:11px;line-height:1.9;max-height:180px;overflow:hidden;position:relative;}
+.log-feed::before{content:'▸ LIVE THREAT LOG';font-size:9px;letter-spacing:4px;color:#ff003c60;display:block;margin-bottom:10px;}
+.log-line{display:flex;gap:12px;animation:logSlide .3s ease-out;}
+@keyframes logSlide{from{opacity:0;transform:translateY(-6px)}to{opacity:1;transform:translateY(0)}}
+.log-time{color:#ff003c60;min-width:80px;}
+.log-msg{color:#ff777760;}
+.log-country{color:var(--red);}
+
+/* Alert blinkers */
+.alert-strip{display:flex;gap:8px;flex-wrap:wrap;margin-top:20px;}
+.alert-pill{font-size:9px;letter-spacing:2px;padding:4px 10px;border:1px solid transparent;opacity:0;}
+.alert-pill.show{animation:alertPop .2s forwards;}
+@keyframes alertPop{to{opacity:1;border-color:var(--red);color:var(--red);}}
+
+/* ═══ HOW HACKING ═══ */
+.cards-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(210px,1fr));gap:18px;margin-top:16px;}
+.card{background:var(--panel);border:1px solid var(--border);padding:26px;position:relative;overflow:hidden;transition:border-color .3s,transform .3s;cursor:default;}
+.card:hover{border-color:var(--cyan);transform:translateY(-4px);}
+.card::after{content:'';position:absolute;top:0;left:0;width:100%;height:2px;background:linear-gradient(90deg,transparent,var(--cyan),transparent);transform:scaleX(0);transition:transform .4s;}
+.card:hover::after{transform:scaleX(1);}
+.card-icon{font-size:32px;margin-bottom:12px;display:block;filter:drop-shadow(0 0 8px currentColor);}
+.card-title{font-family:'Orbitron',monospace;font-size:12px;font-weight:700;letter-spacing:2px;color:var(--cyan);margin-bottom:9px;text-transform:uppercase;}
+.card-body{font-family:'Rajdhani',sans-serif;font-size:14px;color:#88cc88;line-height:1.6;margin-bottom:10px;}
+.card-tip{font-size:11px;color:var(--green);border-top:1px solid var(--border);padding-top:9px;}
+
+/* ═══ SYSTEM SCAN TERMINAL ═══ */
+#scan-section{gap:32px;}
+.scan-terminal{background:#000;border:1px solid var(--border);padding:30px;font-size:13px;line-height:2;max-width:680px;position:relative;overflow:hidden;}
+.scan-terminal::before{content:'SYSTEM SCAN — root@hacklab';position:absolute;top:0;left:0;right:0;padding:8px 14px;background:#00ff4108;font-size:10px;letter-spacing:3px;color:var(--dim);border-bottom:1px solid var(--border);}
+.scan-terminal{padding-top:44px;}
+.scan-line{display:flex;gap:10px;opacity:0;transform:translateX(-10px);transition:opacity .3s,transform .3s;white-space:nowrap;}
+.scan-line.active{opacity:1;transform:translateX(0);}
+.scan-port-open{color:var(--yellow);}
+.scan-port-closed{color:var(--dim);}
+.scan-port-secure{color:var(--green);}
+.scan-warn{color:var(--red);}
+.scan-ok{color:var(--cyan);}
+.cursor-blink{animation:blink .7s infinite;color:var(--green);}
+
+/* ═══ FIREWALL BLOCK SCENE ═══ */
+#firewall-section{gap:32px;align-items:flex-start;}
+.firewall-stage{display:flex;align-items:center;justify-content:center;gap:30px;padding:40px;background:#000;border:1px solid var(--border);max-width:680px;position:relative;overflow:hidden;min-height:160px;}
+.fw-entity{font-size:52px;position:relative;transition:transform .4s;}
+.fw-arrow{font-family:'Share Tech Mono',monospace;font-size:22px;color:var(--red);letter-spacing:-2px;opacity:0;transition:opacity .4s;}
+.fw-status{position:absolute;bottom:12px;left:0;right:0;text-align:center;font-family:'Orbitron',monospace;font-size:12px;letter-spacing:3px;opacity:0;transition:all .4s;}
+.fw-btn{background:transparent;border:1px solid var(--green);color:var(--green);font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:2px;padding:12px 24px;cursor:pointer!important;transition:all .3s;margin-top:20px;}
+.fw-btn:hover{background:var(--green);color:#000;}
+
+/* ═══ PASSWORD ═══ */
+#password{gap:28px;}
+.pw-demo{display:grid;grid-template-columns:1fr 1fr;gap:20px;}
+@media(max-width:650px){.pw-demo{grid-template-columns:1fr;}}
+.pw-panel{background:var(--panel);border:1px solid var(--border);padding:28px;position:relative;}
+.pw-panel.danger{border-color:#ff003c40;}
+.pw-panel.safe{border-color:#00ff4140;}
+.pw-label{font-family:'Orbitron',monospace;font-size:10px;letter-spacing:3px;text-transform:uppercase;margin-bottom:18px;display:flex;align-items:center;gap:9px;}
+.pw-label.danger{color:var(--red);}
+.pw-label.safe{color:var(--green);}
+.pw-display{font-family:'Share Tech Mono',monospace;font-size:clamp(16px,2.5vw,26px);letter-spacing:4px;margin-bottom:18px;padding:12px 16px;background:#000;border:1px solid #ffffff10;}
+.pw-display.danger{color:var(--red);text-shadow:0 0 10px #ff003c80;}
+.pw-display.safe{color:var(--green);text-shadow:0 0 10px #00ff4180;}
+.crack-bar-wrap{height:3px;background:#ffffff10;margin-bottom:10px;overflow:hidden;}
+.crack-bar{height:100%;width:0%;transition:width .3s;}
+.crack-bar.danger{background:var(--red);box-shadow:0 0 8px var(--red);}
+.crack-bar.safe{background:var(--green);box-shadow:0 0 8px var(--green);}
+.crack-result{font-size:12px;letter-spacing:.5px;height:20px;transition:all .3s;}
+.crack-result.danger{color:var(--red);}
+.shield-wrap{text-align:center;font-size:44px;margin-top:14px;height:56px;display:flex;align-items:center;justify-content:center;transition:all .5s;}
+.pw-tester{background:#000d00;border:1px solid var(--border);padding:28px;margin-top:14px;}
+.pw-tester h3{font-family:'Orbitron',monospace;font-size:13px;letter-spacing:3px;color:var(--cyan);margin-bottom:18px;}
+.pw-input-wrap{display:flex;gap:10px;margin-bottom:18px;flex-wrap:wrap;}
+.pw-input{flex:1;min-width:180px;background:#000;border:1px solid var(--border);color:var(--green);font-family:'Share Tech Mono',monospace;font-size:15px;padding:11px 14px;outline:none;letter-spacing:2px;}
+.pw-input:focus{border-color:var(--cyan);}
+.pw-btn{background:transparent;border:1px solid var(--green);color:var(--green);font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:2px;padding:11px 22px;cursor:pointer!important;transition:all .3s;}
+.pw-btn:hover{background:var(--green);color:#000;}
+.pw-strength-bar{height:5px;background:#ffffff10;margin-bottom:10px;overflow:hidden;}
+.pw-strength-fill{height:100%;width:0%;transition:all .5s;}
+.pw-result-text{font-family:'Rajdhani',sans-serif;font-size:15px;min-height:24px;letter-spacing:.5px;}
+
+/* CYBER RISK METER */
+.risk-meter{background:var(--panel);border:1px solid var(--border);padding:24px;margin-top:24px;max-width:680px;}
+.risk-meter h3{font-family:'Orbitron',monospace;font-size:12px;letter-spacing:3px;color:var(--cyan);margin-bottom:16px;}
+.risk-bar-wrap{height:20px;background:#ffffff08;position:relative;overflow:hidden;border:1px solid var(--border);}
+.risk-fill{height:100%;width:100%;background:linear-gradient(90deg,var(--red),var(--orange),var(--yellow));transition:width 1s ease,background 1s;position:relative;}
+.risk-fill::after{content:'';position:absolute;inset:0;background:repeating-linear-gradient(90deg,transparent 0px,transparent 18px,rgba(0,0,0,.3) 18px,rgba(0,0,0,.3) 20px);}
+.risk-labels{display:flex;justify-content:space-between;font-size:9px;color:var(--dim);letter-spacing:2px;margin-top:6px;}
+.risk-text{font-family:'Orbitron',monospace;font-size:13px;letter-spacing:2px;margin-top:10px;transition:color .5s;}
+
+/* ═══ PHISHING ═══ */
+.email-mockup{background:#0d0d0d;border:1px solid #ffffff15;max-width:580px;font-family:'Rajdhani',sans-serif;box-shadow:0 0 40px #00000080;}
+.email-header-bar{background:#1a1a1a;padding:12px 18px;font-size:11px;color:#666;display:flex;gap:14px;border-bottom:1px solid #ffffff10;flex-wrap:wrap;}
+.email-header-bar span{color:#999;}
+.email-body{padding:24px;}
+.email-subject{font-size:19px;font-weight:700;color:#fff;margin-bottom:18px;line-height:1.3;}
+.email-text{color:#bbb;font-size:14px;line-height:1.8;margin-bottom:22px;}
+.fake-link{background:#c00020;color:#fff;padding:11px 26px;display:inline-block;font-size:13px;font-weight:700;letter-spacing:1px;cursor:not-allowed!important;position:relative;}
+.fake-link::after{content:'⚠ DO NOT CLICK — SIMULATION';position:absolute;bottom:-22px;left:0;font-size:9px;color:var(--red);letter-spacing:2px;white-space:nowrap;}
+.red-flags{margin-top:36px;}
+.red-flags h3{font-family:'Orbitron',monospace;font-size:13px;letter-spacing:3px;color:var(--red);margin-bottom:18px;}
+.flag-item{display:flex;gap:14px;align-items:flex-start;margin-bottom:14px;padding:12px 16px;background:#1a0005;border-left:3px solid var(--red);opacity:0;transform:translateX(-20px);transition:all .4s;}
+.flag-item.visible{opacity:1;transform:translateX(0);}
+.flag-num{font-family:'Orbitron',monospace;font-size:10px;color:var(--red);min-width:22px;padding-top:2px;}
+.flag-text{font-family:'Rajdhani',sans-serif;font-size:14px;color:#ffaaaa;line-height:1.5;}
+.reveal-btn{background:transparent;border:1px solid var(--red);color:var(--red);font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:2px;padding:12px 26px;cursor:pointer!important;transition:all .3s;margin-top:22px;display:block;}
+.reveal-btn:hover{background:var(--red);color:#000;}
+
+/* ═══ CHECKLIST ═══ */
+.checklist{display:flex;flex-direction:column;gap:14px;max-width:680px;}
+.check-item{display:flex;align-items:center;gap:18px;padding:16px 22px;background:var(--panel);border:1px solid var(--border);position:relative;overflow:hidden;opacity:0;transform:translateX(-30px);transition:opacity .5s,transform .5s,border-color .3s;cursor:pointer!important;}
+.check-item.reveal{opacity:1;transform:translateX(0);}
+.check-item.checked{border-color:var(--green);background:#001a00;}
+.check-item.checked::before{content:'';position:absolute;inset:0;background:linear-gradient(90deg,#00ff410a,transparent);}
+.check-box{width:22px;height:22px;border:2px solid var(--dim);display:flex;align-items:center;justify-content:center;flex-shrink:0;font-size:13px;transition:all .3s;}
+.check-item.checked .check-box{border-color:var(--green);color:var(--green);text-shadow:0 0 8px var(--green);}
+.check-text{font-family:'Rajdhani',sans-serif;font-size:16px;color:#88cc88;font-weight:600;}
+.check-item.checked .check-text{color:var(--green);}
+#checklist-score{font-family:'Orbitron',monospace;font-size:13px;color:var(--dim);letter-spacing:2px;margin-top:8px;}
+
+/* ═══ QUIZ ═══ */
+#quiz-section{gap:32px;}
+.quiz-box{background:var(--panel);border:1px solid var(--border);padding:32px;max-width:680px;}
+.quiz-q{font-family:'Orbitron',monospace;font-size:14px;letter-spacing:2px;color:var(--cyan);margin-bottom:24px;line-height:1.5;}
+.quiz-options{display:flex;flex-direction:column;gap:12px;}
+.quiz-opt{background:#000;border:1px solid var(--border);color:var(--green);font-family:'Share Tech Mono',monospace;font-size:13px;padding:14px 20px;cursor:pointer!important;transition:all .3s;text-align:left;letter-spacing:1px;}
+.quiz-opt:hover:not(.used){border-color:var(--cyan);color:var(--cyan);}
+.quiz-opt.correct{border-color:var(--green);background:#001a00;color:var(--green);text-shadow:var(--glow-g);}
+.quiz-opt.wrong{border-color:var(--red);background:#1a0000;color:var(--red);animation:redFlash .2s 3;}
+@keyframes redFlash{0%,100%{background:#1a0000}50%{background:#3a0000}}
+.quiz-opt.used{pointer-events:none;}
+.quiz-feedback{margin-top:20px;font-family:'Rajdhani',sans-serif;font-size:16px;line-height:1.6;padding:16px 20px;border-left:3px solid;opacity:0;transition:opacity .4s;}
+.quiz-feedback.show{opacity:1;}
+.quiz-feedback.good{border-color:var(--green);color:var(--green);background:#001a00;}
+.quiz-feedback.bad{border-color:var(--red);color:#ffaaaa;background:#1a0000;}
+.quiz-score{font-family:'Orbitron',monospace;font-size:12px;letter-spacing:3px;color:var(--dim);margin-top:16px;}
+.quiz-next{background:transparent;border:1px solid var(--cyan);color:var(--cyan);font-family:'Share Tech Mono',monospace;font-size:12px;letter-spacing:2px;padding:11px 22px;cursor:pointer!important;transition:all .3s;margin-top:14px;display:none;}
+.quiz-next:hover{background:var(--cyan);color:#000;}
+
+/* ═══ EMERGENCY ALERT ═══ */
+#emergency-overlay{position:fixed;inset:0;background:#0a0000;z-index:9995;display:none;flex-direction:column;align-items:center;justify-content:center;gap:24px;}
+#emergency-overlay.active{display:flex;}
+.em-border{position:absolute;inset:0;border:8px solid var(--red);animation:emPulse .4s infinite;}
+@keyframes emPulse{0%,100%{opacity:1}50%{opacity:.3}}
+.em-icon{font-size:80px;animation:emFlash .3s infinite alternate;}
+@keyframes emFlash{from{filter:drop-shadow(0 0 20px red)}to{filter:none}}
+.em-title{font-family:'Orbitron',monospace;font-size:clamp(24px,5vw,52px);font-weight:900;color:var(--red);text-shadow:0 0 30px var(--red);letter-spacing:4px;text-align:center;}
+.em-msg{font-family:'Rajdhani',sans-serif;font-size:clamp(14px,2vw,20px);color:#ff8080;text-align:center;max-width:600px;line-height:1.7;}
+.em-tips{display:flex;flex-direction:column;gap:10px;margin-top:16px;}
+.em-tip{font-size:13px;color:var(--green);border-left:3px solid var(--green);padding-left:12px;letter-spacing:1px;}
+.em-close{background:transparent;border:1px solid var(--green);color:var(--green);font-family:'Share Tech Mono',monospace;font-size:13px;letter-spacing:3px;padding:12px 28px;cursor:pointer!important;transition:all .3s;margin-top:8px;}
+.em-close:hover{background:var(--green);color:#000;}
+
+/* ═══ FINAL ═══ */
+#final{align-items:center;text-align:center;gap:28px;}
+.final-msg{font-family:'Orbitron',monospace;font-size:clamp(20px,4vw,50px);font-weight:900;line-height:1.2;text-shadow:0 0 40px var(--green);letter-spacing:2px;}
+.final-msg .red{color:var(--red);text-shadow:0 0 30px var(--red);}
+.final-sub{font-family:'Rajdhani',sans-serif;font-size:clamp(15px,1.8vw,21px);color:#77bb77;max-width:580px;line-height:1.7;}
+.cta-btn{background:transparent;border:2px solid var(--green);color:var(--green);font-family:'Orbitron',monospace;font-size:clamp(11px,1.3vw,14px);letter-spacing:4px;padding:16px 38px;cursor:pointer!important;text-transform:uppercase;position:relative;overflow:hidden;transition:color .3s;text-decoration:none;display:inline-block;margin-top:8px;}
+.cta-btn::before{content:'';position:absolute;inset:0;background:var(--green);transform:scaleX(0);transform-origin:left;transition:transform .3s;z-index:-1;}
+.cta-btn:hover::before{transform:scaleX(1);}
+.cta-btn:hover{color:#000;}
+
+/* ═══ SECTION GLITCH TRANSITION ═══ */
+.section-glitch{position:fixed;inset:0;pointer-events:none;z-index:9994;opacity:0;}
+.section-glitch canvas{position:absolute;inset:0;}
+
+/* RESP */
+@media(max-width:600px){section{padding:80px 20px 60px;}nav{padding:12px 18px;}.nav-right{gap:8px;}}
+</style>
+</head>
+<body>
+
+<!-- CURSOR -->
+<div id="cursor"></div>
+<div id="cursor-dot"></div>
+<canvas id="trail-canvas"></canvas>
+
+<!-- EMERGENCY OVERLAY -->
+<div id="emergency-overlay">
+  <div class="em-border"></div>
+  <div class="em-icon">🚨</div>
+  <div class="em-title">BREACH DETECTED</div>
+  <div class="em-msg">Simulated intrusion detected on this system. In a real attack, your data would now be compromised. Here's what to do immediately:</div>
+  <div class="em-tips">
+    <div class="em-tip">▸ Disconnect from the internet immediately</div>
+    <div class="em-tip">▸ Change all passwords from a clean device</div>
+    <div class="em-tip">▸ Enable 2FA on all accounts right now</div>
+    <div class="em-tip">▸ Contact your IT team or cybersecurity provider</div>
+    <div class="em-tip">▸ Do NOT pay any ransom — report to authorities</div>
+  </div>
+  <button class="em-close" onclick="closeEmergency()">◈ DISMISS SIMULATION</button>
+</div>
+
+<!-- INTRO -->
+<div id="intro">
+  <div id="intro-warning">⚠ SIMULATION — FOR EDUCATIONAL PURPOSES ONLY ⚠</div>
+  <div id="intro-title">HACK ATTACK</div>
+  <div id="terminal-lines">
+    <div id="tl1"></div><div id="tl2"></div><div id="tl3"></div>
+  </div>
+  <div style="width:min(480px,80vw)">
+    <div id="progress-wrap"><div id="progress-bar"></div></div>
+    <div id="progress-label">SCANNING SYSTEM...</div>
+  </div>
+  <button id="skip-btn" onclick="skipIntro()">SKIP ›</button>
+</div>
+
+<div id="glitch-flash"></div>
+
+<main id="main">
+<nav>
+  <div class="nav-logo">◈ HACK ATTACK v2.0</div>
+  <div class="nav-right">
+    <button class="alert-btn" onclick="triggerEmergency()">🔴 BREACH ALERT</button>
+    <button class="mode-toggle" id="mode-btn" onclick="toggleParanoid()">☠ PARANOID MODE</button>
+    <div class="nav-status">SIMULATION ACTIVE</div>
+  </div>
+</nav>
+
+<!-- ═══ HERO ═══ -->
+<section id="hero">
+  <canvas id="matrix-canvas"></canvas>
+  <canvas id="particle-canvas"></canvas>
+  <canvas id="globe-canvas"></canvas>
+  <div class="hero-subtitle fade-up">// CYBER AWARENESS SIMULATION 2026 — v2.0</div>
+  <div class="hero-title fade-up">YOUR SYSTEM<br>IS <span class="accent">VULNERABLE.</span><br>PROTECT IT.</div>
+  <p class="hero-body fade-up">Hackers don't announce themselves. They exploit weak passwords, trick you with fake emails, and silently steal data. This simulation shows you exactly how — so you never fall for it.</p>
+  <div class="terminal-box fade-up">
+    <div class="t-line"><span class="prompt">root@hacklab:~$ </span><span class="cmd">scan --target user_device --mode deep</span></div>
+    <div><span class="out">[!] Weak password detected: ████████</span></div>
+    <div><span class="out">[!] 2FA not enabled on 3 accounts</span></div>
+    <div><span class="out">[!] Public Wi-Fi exposure: HIGH RISK</span></div>
+    <div><span class="ok">[✔] Running awareness simulation v2.0...</span></div>
+  </div>
+  <div class="scroll-hint fade-up">▼ SCROLL TO ENTER ▼</div>
+</section>
+<hr class="divider">
+
+<!-- ═══ THREAT MONITOR ═══ -->
+<section id="threat-monitor" style="max-width:100%;padding:60px 40px;min-height:auto;">
+  <div style="max-width:1100px;margin:0 auto;">
+    <div class="section-tag fade-up">// LIVE GLOBAL INTELLIGENCE</div>
+    <h2 data-glitch class="fade-up">GLOBAL <span>THREAT MONITOR</span></h2>
+    <div class="monitor-grid">
+      <div class="stat-card fade-up">
+        <span class="stat-icon">⚡</span>
+        <div class="stat-label">Attacks Today</div>
+        <div class="stat-value" id="stat-attacks">0</div>
+        <div class="stat-sub">+<span id="stat-attacks-rate">0</span>/sec</div>
+      </div>
+      <div class="stat-card fade-up">
+        <span class="stat-icon">🎣</span>
+        <div class="stat-label">Phishing Emails Sent</div>
+        <div class="stat-value" id="stat-phish">0</div>
+        <div class="stat-sub">targeting users worldwide</div>
+      </div>
+      <div class="stat-card fade-up">
+        <span class="stat-icon">🔓</span>
+        <div class="stat-label">Passwords Cracked</div>
+        <div class="stat-value" id="stat-pw">0</div>
+        <div class="stat-sub">this session</div>
+      </div>
+      <div class="stat-card fade-up">
+        <span class="stat-icon">💾</span>
+        <div class="stat-label">Data Records Stolen</div>
+        <div class="stat-value" id="stat-data">0</div>
+        <div class="stat-sub">GB equivalent</div>
+      </div>
+    </div>
+    <div class="log-feed fade-up" id="log-feed"></div>
+    <div class="alert-strip fade-up" id="alert-strip">
+      <div class="alert-pill" id="ap1">⚠ NEW BREACH DETECTED</div>
+      <div class="alert-pill" id="ap2">🔴 RANSOMWARE SPREADING</div>
+      <div class="alert-pill" id="ap3">⚡ BOTNET ACTIVE</div>
+      <div class="alert-pill" id="ap4">🎣 PHISHING CAMPAIGN LIVE</div>
+    </div>
+  </div>
+</section>
+<hr class="divider">
+
+<!-- ═══ HOW HACKING WORKS ═══ -->
+<section id="howit" style="gap:28px">
+  <div class="fade-up">
+    <div class="section-tag">// 01 — education</div>
+    <h2 data-glitch>HOW ATTACKERS <span>EXPLOIT YOU</span></h2>
+    <p class="lead">Most hacks rely on human mistakes — weak passwords, curiosity clicks, and misplaced trust. Here's what you're up against.</p>
+  </div>
+  <div class="cards-grid">
+    <div class="card fade-up"><span class="card-icon">🔑</span><div class="card-title">Weak Passwords</div><div class="card-body">Over 80% of breaches involve compromised credentials. "123456" gets cracked in milliseconds using brute-force tools.</div><div class="card-tip">🛡 Use 12+ character passwords with symbols.</div></div>
+    <div class="card fade-up"><span class="card-icon">🎣</span><div class="card-title">Phishing Emails</div><div class="card-body">Fake emails disguised as banks or Netflix. One click on a link and your credentials are silently stolen.</div><div class="card-tip">🛡 Always verify the sender's real domain.</div></div>
+    <div class="card fade-up"><span class="card-icon">📶</span><div class="card-title">Public Wi-Fi</div><div class="card-body">Attackers can "man in the middle" your connection — intercepting passwords and messages in real time.</div><div class="card-tip">🛡 Use a VPN on public networks.</div></div>
+    <div class="card fade-up"><span class="card-icon">👤</span><div class="card-title">Social Engineering</div><div class="card-body">Attackers psychologically manipulate you into revealing passwords — pretending to be IT support or a friend.</div><div class="card-tip">🛡 Never share credentials with anyone verbally.</div></div>
+  </div>
+</section>
+<hr class="divider">
+
+<!-- ═══ SYSTEM SCAN TERMINAL ═══ -->
+<section id="scan-section">
+  <div class="fade-up">
+    <div class="section-tag">// 02 — system analysis</div>
+    <h2 data-glitch>FAKE <span>SYSTEM SCAN</span></h2>
+    <p class="lead">Watch what a hacker's recon scan looks like when it targets your device. (Simulation only — nothing real is running.)</p>
+  </div>
+  <div class="scan-terminal fade-up" id="scan-terminal">
+    <div style="font-size:10px;color:var(--dim);margin-bottom:12px;letter-spacing:2px">Click to begin scan ▸</div>
+  </div>
+  <button class="pw-btn fade-up" onclick="runScan()" id="scan-btn" style="margin-top:16px">▸ INITIATE SCAN</button>
+</section>
+<hr class="divider">
+
+<!-- ═══ FIREWALL SCENE ═══ -->
+<section id="firewall-section">
+  <div class="fade-up">
+    <div class="section-tag">// 03 — defense simulation</div>
+    <h2 data-glitch>FIREWALL <span>IN ACTION</span></h2>
+    <p class="lead">Watch your firewall detect and block a malware attempt in real time.</p>
+  </div>
+  <div class="firewall-stage fade-up" id="fw-stage">
+    <div class="fw-entity" id="fw-virus" title="Malware">🦠</div>
+    <div class="fw-arrow" id="fw-arrow">→→→</div>
+    <div class="fw-entity" id="fw-shield">🛡</div>
+    <div class="fw-status" id="fw-status"></div>
+  </div>
+  <button class="fw-btn fade-up" onclick="runFirewall()">▸ SIMULATE ATTACK</button>
+</section>
+<hr class="divider">
+
+<!-- ═══ PASSWORD DEMO ═══ -->
+<section id="password">
+  <div class="fade-up">
+    <div class="section-tag">// 04 — password analysis</div>
+    <h2 data-glitch>WEAK vs <span>STRONG</span> PASSWORDS</h2>
+    <p class="lead">See in real time how fast an attacker cracks a simple password — and why a strong one is almost unbreakable.</p>
+  </div>
+  <div class="pw-demo fade-up">
+    <div class="pw-panel danger">
+      <div class="pw-label danger">❌ WEAK PASSWORD</div>
+      <div class="pw-display danger">123456</div>
+      <div class="crack-bar-wrap"><div class="crack-bar danger" id="weak-bar"></div></div>
+      <div class="crack-result danger" id="weak-result"></div>
+      <div class="shield-wrap" id="weak-shield">🔓</div>
+      <button class="pw-btn" onclick="crackWeak()" style="margin-top:14px;border-color:var(--red);color:var(--red)">RUN CRACK SIM</button>
+    </div>
+    <div class="pw-panel safe">
+      <div class="pw-label safe">✅ STRONG PASSWORD</div>
+      <div class="pw-display safe">T3ch@Secure2026!</div>
+      <div class="crack-bar-wrap"><div class="crack-bar safe" id="strong-bar"></div></div>
+      <div class="crack-result" id="strong-result" style="color:var(--green)"></div>
+      <div class="shield-wrap" id="strong-shield">🔒</div>
+      <button class="pw-btn" onclick="testStrong()" style="margin-top:14px">ANALYZE PASSWORD</button>
+    </div>
+  </div>
+  <div class="pw-tester fade-up">
+    <h3>▸ TEST YOUR OWN PASSWORD</h3>
+    <div class="pw-input-wrap">
+      <input type="password" class="pw-input" id="pw-test-input" placeholder="Type a password to analyze...">
+      <button class="pw-btn" onclick="testMyPassword()">ANALYZE</button>
+    </div>
+    <div class="pw-strength-bar"><div class="pw-strength-fill" id="pw-fill"></div></div>
+    <div class="pw-result-text" id="pw-result-text"></div>
+    <p style="font-size:10px;color:var(--dim);margin-top:10px;letter-spacing:1px">⚠ Demo only — no data sent or stored. Never enter real passwords here.</p>
+  </div>
+
+  <!-- RISK METER -->
+  <div class="risk-meter fade-up" id="risk-meter">
+    <h3>YOUR CURRENT RISK LEVEL</h3>
+    <div class="risk-bar-wrap"><div class="risk-fill" id="risk-fill" style="width:100%"></div></div>
+    <div class="risk-labels"><span>CRITICAL</span><span>HIGH</span><span>MEDIUM</span><span>LOW</span><span>SECURE</span></div>
+    <div class="risk-text" id="risk-text" style="color:var(--red)">████████████ CRITICAL — Complete checklist below to reduce risk</div>
+  </div>
+</section>
+<hr class="divider">
+
+<!-- ═══ PHISHING ═══ -->
+<section id="phishing" style="gap:28px">
+  <div class="fade-up">
+    <div class="section-tag">// 05 — phishing simulation</div>
+    <h2 data-glitch>CAN YOU SPOT THE <span>FAKE EMAIL?</span></h2>
+    <p class="lead">Phishing emails are built to look real. Here's one. How many red flags can you spot?</p>
+  </div>
+  <div class="email-mockup fade-up">
+    <div class="email-header-bar">
+      <span>From: <span>security-alert@paypa1-verify.com</span></span>
+      <span>To: you@email.com</span>
+    </div>
+    <div class="email-body">
+      <div class="email-subject">⚠️ URGENT: Your account has been SUSPENDED - Verify NOW</div>
+      <div class="email-text">Dear Valued Customer,<br><br>We have detected suspicious activity on your account. Your access has been temporarily suspended for your security. You must verify your identity within <strong style="color:#ff6666">24 HOURS</strong> or your account will be permanently deleted.<br><br>Click the button below immediately to restore access:</div>
+      <div class="fake-link">VERIFY MY ACCOUNT NOW</div>
+    </div>
+  </div>
+  <div class="red-flags fade-up">
+    <button class="reveal-btn" id="reveal-btn" onclick="revealFlags()">▸ REVEAL RED FLAGS</button>
+    <div id="flags-list" style="margin-top:22px"></div>
+  </div>
+</section>
+<hr class="divider">
+
+<!-- ═══ QUIZ ═══ -->
+<section id="quiz-section">
+  <div class="fade-up">
+    <div class="section-tag">// 06 — knowledge test</div>
+    <h2 data-glitch>CYBER <span>QUIZ CHALLENGE</span></h2>
+    <p class="lead">Think like a security analyst. Answer these to test what you've learned.</p>
+  </div>
+  <div class="quiz-box fade-up" id="quiz-box">
+    <div class="quiz-q" id="quiz-q"></div>
+    <div class="quiz-options" id="quiz-opts"></div>
+    <div class="quiz-feedback" id="quiz-fb"></div>
+    <div class="quiz-score" id="quiz-score"></div>
+    <button class="quiz-next" id="quiz-next" onclick="nextQuestion()">NEXT QUESTION ›</button>
+  </div>
+</section>
+<hr class="divider">
+
+<!-- ═══ CHECKLIST ═══ -->
+<section id="checklist" style="gap:28px">
+  <div class="fade-up">
+    <div class="section-tag">// 07 — protection checklist</div>
+    <h2 data-glitch>YOUR SECURITY <span>ACTION PLAN</span></h2>
+    <p class="lead">Click each item to mark it done. These 7 habits eliminate the vast majority of cyber risk.</p>
+  </div>
+  <div class="checklist" id="checklist-container">
+    <div class="check-item" onclick="toggleCheck(this)"><div class="check-box">✓</div><div class="check-text">🔐 Use a strong, unique password for every account (12+ characters)</div></div>
+    <div class="check-item" onclick="toggleCheck(this)"><div class="check-box">✓</div><div class="check-text">📱 Enable Two-Factor Authentication (2FA) on all important accounts</div></div>
+    <div class="check-item" onclick="toggleCheck(this)"><div class="check-box">✓</div><div class="check-text">🎣 Never click links in suspicious emails — go directly to the website</div></div>
+    <div class="check-item" onclick="toggleCheck(this)"><div class="check-box">✓</div><div class="check-text">🔄 Keep your operating system and apps updated always</div></div>
+    <div class="check-item" onclick="toggleCheck(this)"><div class="check-box">✓</div><div class="check-text">📶 Use a VPN on public Wi-Fi networks</div></div>
+    <div class="check-item" onclick="toggleCheck(this)"><div class="check-box">✓</div><div class="check-text">🔑 Never share your OTP, PIN, or password with anyone — ever</div></div>
+    <div class="check-item" onclick="toggleCheck(this)"><div class="check-box">✓</div><div class="check-text">💾 Regularly back up your important files to a secure location</div></div>
+  </div>
+  <div id="checklist-score" class="fade-up">0 / 7 SECURED</div>
+</section>
+<hr class="divider">
+
+<!-- ═══ FINAL ═══ -->
+<section id="final">
+  <div class="final-msg fade-up">HACKERS LOOK FOR<br><span class="red">EASY TARGETS.</span><br>DON'T BE ONE.</div>
+  <p class="final-sub fade-up">The best firewall is an informed user. You've just trained yourself on the tactics real attackers use — that makes you significantly harder to hack.</p>
+  <a class="cta-btn fade-up" href="#checklist">◈ SECURE YOUR DIGITAL LIFE</a>
+  <p class="fade-up" style="font-size:10px;color:var(--dim);letter-spacing:2px;margin-top:14px">THIS HAS BEEN AN EDUCATIONAL SIMULATION — NO REAL HACKING OCCURRED</p>
+</section>
+</main>
+
+<script>
+/* ══════════════════════════════════════════
+   CUSTOM CURSOR + MOUSE TRAIL
+══════════════════════════════════════════ */
+const cursor = document.getElementById('cursor');
+const cursorDot = document.getElementById('cursor-dot');
+const trailCanvas = document.getElementById('trail-canvas');
+const tCtx = trailCanvas.getContext('2d');
+const particles = [];
+
+trailCanvas.width = window.innerWidth;
+trailCanvas.height = window.innerHeight;
+window.addEventListener('resize', () => {
+  trailCanvas.width = window.innerWidth;
+  trailCanvas.height = window.innerHeight;
+});
+
+let mx = -100, my = -100;
+document.addEventListener('mousemove', e => {
+  mx = e.clientX; my = e.clientY;
+  cursor.style.left = mx + 'px';
+  cursor.style.top = my + 'px';
+  cursorDot.style.left = mx + 'px';
+  cursorDot.style.top = my + 'px';
+  // spawn trail particle
+  for (let i = 0; i < 2; i++) {
+    particles.push({
+      x: mx + (Math.random()-0.5)*6,
+      y: my + (Math.random()-0.5)*6,
+      vx: (Math.random()-0.5)*1.5,
+      vy: (Math.random()-0.5)*1.5 - 0.5,
+      life: 1,
+      size: Math.random()*3+1
+    });
+  }
+});
+
+document.addEventListener('click', e => {
+  // spark burst
+  for (let i = 0; i < 12; i++) {
+    const angle = (i/12)*Math.PI*2;
+    particles.push({
+      x: e.clientX, y: e.clientY,
+      vx: Math.cos(angle)*3,
+      vy: Math.sin(angle)*3,
+      life: 1, size: 2+Math.random()*3
+    });
+  }
+  cursor.style.width = '30px'; cursor.style.height = '30px';
+  setTimeout(() => { cursor.style.width = '16px'; cursor.style.height = '16px'; }, 200);
+});
+
+function animateTrail() {
+  tCtx.clearRect(0, 0, trailCanvas.width, trailCanvas.height);
+  const green = getComputedStyle(document.documentElement).getPropertyValue('--green').trim() || '#00ff41';
+  for (let i = particles.length-1; i >= 0; i--) {
+    const p = particles[i];
+    p.x += p.vx; p.y += p.vy;
+    p.life -= 0.04;
+    if (p.life <= 0) { particles.splice(i,1); continue; }
+    tCtx.globalAlpha = p.life * 0.6;
+    tCtx.fillStyle = green;
+    tCtx.shadowColor = green;
+    tCtx.shadowBlur = 6;
+    tCtx.beginPath();
+    tCtx.arc(p.x, p.y, p.size * p.life, 0, Math.PI*2);
+    tCtx.fill();
+  }
+  tCtx.globalAlpha = 1;
+  tCtx.shadowBlur = 0;
+  requestAnimationFrame(animateTrail);
+}
+animateTrail();
+
+/* ══════════════════════════════════════════
+   INTRO
+══════════════════════════════════════════ */
+let introSkipped = false;
+
+async function runIntro() {
+  const bar = document.getElementById('progress-bar');
+  const label = document.getElementById('progress-label');
+  const lines = ['tl1','tl2','tl3'];
+  const phases = ['SCANNING SYSTEM...','ANALYZING VULNERABILITIES...','LOADING SIMULATION...','SYSTEM COMPROMISED'];
+  const phaseColors = ['#00ff41','#ffd600','#ff6600','#ff003c'];
+  const messages = ['> Scanning open ports...','> Checking password entropy...','> Detecting phishing exposure...','> Analyzing 2FA status...','> Preparing awareness module...'];
+  let p = 0;
+  for (let i = 0; i <= 100; i++) {
+    if (introSkipped) return;
+    await delay(26);
+    bar.style.width = i+'%';
+    if (i%25===0 && p<phases.length) { label.textContent=phases[p]; label.style.color=phaseColors[p]; p++; }
+    if (i%20===0) { const idx=Math.floor(i/20); if(idx<messages.length) document.getElementById(lines[idx%3]).textContent=messages[idx]; }
+    if (Math.random()<0.03) {
+      document.getElementById('intro-title').style.transform=`skewX(${(Math.random()-.5)*6}deg)`;
+      await delay(50);
+      document.getElementById('intro-title').style.transform='';
+    }
+  }
+  await delay(350);
+  const f=document.getElementById('glitch-flash'); f.style.opacity='0.5';
+  setTimeout(()=>{ f.style.opacity='0'; },150);
+  await delay(280);
+  finishIntro();
+}
+
+function finishIntro() {
+  const intro=document.getElementById('intro');
+  intro.style.opacity='0'; intro.style.transition='opacity 0.5s';
+  setTimeout(()=>{
+    intro.style.display='none';
+    document.getElementById('main').classList.add('visible');
+    startMatrix(); startParticles(); startGlobe();
+    initScrollObserver(); initStats(); initAlerts(); initQuiz();
+  },500);
+}
+
+function skipIntro() {
+  introSkipped=true;
+  document.getElementById('intro').style.display='none';
+  document.getElementById('main').classList.add('visible');
+  startMatrix(); startParticles(); startGlobe();
+  initScrollObserver(); initStats(); initAlerts(); initQuiz();
+}
+
+function delay(ms){ return new Promise(r=>setTimeout(r,ms)); }
+
+/* ══════════════════════════════════════════
+   MATRIX RAIN
+══════════════════════════════════════════ */
+function startMatrix() {
+  const c=document.getElementById('matrix-canvas');
+  const ctx=c.getContext('2d');
+  c.width=c.offsetWidth; c.height=c.offsetHeight;
+  const cols=Math.floor(c.width/14);
+  const drops=Array(cols).fill(1);
+  const chars='ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789@#$%^&*!アイウエオ';
+  setInterval(()=>{
+    ctx.fillStyle='rgba(1,10,1,0.05)'; ctx.fillRect(0,0,c.width,c.height);
+    ctx.fillStyle='#00ff41'; ctx.font='12px Share Tech Mono';
+    drops.forEach((d,i)=>{ const ch=chars[Math.floor(Math.random()*chars.length)]; ctx.fillText(ch,i*14,d*14); if(d*14>c.height&&Math.random()>.975)drops[i]=0; drops[i]++; });
+  },55);
+}
+
+/* ══════════════════════════════════════════
+   PARTICLE NETWORK
+══════════════════════════════════════════ */
+function startParticles() {
+  const c=document.getElementById('particle-canvas');
+  const ctx=c.getContext('2d');
+  c.width=c.offsetWidth; c.height=c.offsetHeight;
+  const pts=[];
+  for(let i=0;i<60;i++) pts.push({x:Math.random()*c.width,y:Math.random()*c.height,vx:(Math.random()-.5)*.4,vy:(Math.random()-.5)*.4});
+  function draw(){
+    ctx.clearRect(0,0,c.width,c.height);
+    const green='#00ff41';
+    pts.forEach(p=>{
+      p.x+=p.vx; p.y+=p.vy;
+      if(p.x<0||p.x>c.width)p.vx*=-1;
+      if(p.y<0||p.y>c.height)p.vy*=-1;
+      ctx.fillStyle=green; ctx.globalAlpha=0.6;
+      ctx.beginPath(); ctx.arc(p.x,p.y,1.5,0,Math.PI*2); ctx.fill();
+    });
+    for(let i=0;i<pts.length;i++) for(let j=i+1;j<pts.length;j++){
+      const dx=pts[i].x-pts[j].x, dy=pts[i].y-pts[j].y;
+      const dist=Math.sqrt(dx*dx+dy*dy);
+      if(dist<120){ ctx.strokeStyle=green; ctx.globalAlpha=(1-dist/120)*0.3; ctx.lineWidth=0.5; ctx.beginPath(); ctx.moveTo(pts[i].x,pts[i].y); ctx.lineTo(pts[j].x,pts[j].y); ctx.stroke(); }
+    }
+    ctx.globalAlpha=1;
+    requestAnimationFrame(draw);
+  }
+  draw();
+}
+
+/* ══════════════════════════════════════════
+   3D GLOBE (Three.js)
+══════════════════════════════════════════ */
+function startGlobe() {
+  const canvas = document.getElementById('globe-canvas');
+  const W = canvas.offsetWidth, H = canvas.offsetHeight;
+  const renderer = new THREE.WebGLRenderer({ canvas, alpha: true, antialias: true });
+  renderer.setSize(W, H);
+  renderer.setClearColor(0x000000, 0);
+
+  const scene = new THREE.Scene();
+  const camera = new THREE.PerspectiveCamera(45, W/H, 0.1, 100);
+  camera.position.z = 2.2;
+
+  // Wireframe globe
+  const geo = new THREE.SphereGeometry(1, 24, 16);
+  const mat = new THREE.MeshBasicMaterial({ color: 0x00ff41, wireframe: true, opacity: 0.3, transparent: true });
+  const globe = new THREE.Mesh(geo, mat);
+  scene.add(globe);
+
+  // Attack dots
+  const dotGeo = new THREE.SphereGeometry(0.025, 6, 6);
+  const attackDots = [];
+  for (let i = 0; i < 20; i++) {
+    const phi = Math.acos(-1 + (2*i)/20);
+    const theta = Math.sqrt(20*Math.PI) * phi;
+    const dot = new THREE.Mesh(dotGeo, new THREE.MeshBasicMaterial({ color: 0xff003c }));
+    dot.position.setFromSphericalCoords(1.02, phi, theta);
+    scene.add(dot);
+    attackDots.push({ mesh: dot, phase: Math.random()*Math.PI*2 });
+  }
+
+  // Attack lines
+  const lineMat = new THREE.LineBasicMaterial({ color: 0xff003c, opacity: 0.5, transparent: true });
+  for (let i = 0; i < 8; i++) {
+    const p1 = attackDots[i*2].mesh.position.clone();
+    const p2 = attackDots[i*2+1 < attackDots.length ? i*2+1 : 0].mesh.position.clone();
+    const mid = p1.clone().add(p2).multiplyScalar(0.5).normalize().multiplyScalar(1.3);
+    const curve = new THREE.QuadraticBezierCurve3(p1, mid, p2);
+    const pts = curve.getPoints(20);
+    const lineGeo = new THREE.BufferGeometry().setFromPoints(pts);
+    scene.add(new THREE.Line(lineGeo, lineMat));
+  }
+
+  let t = 0;
+  function animGlobe() {
+    requestAnimationFrame(animGlobe);
+    t += 0.005;
+    globe.rotation.y = t;
+    attackDots.forEach(d => {
+      const s = 0.7 + 0.3*Math.sin(d.phase + t*3);
+      d.mesh.scale.setScalar(s);
+      d.mesh.material.opacity = s;
+    });
+    renderer.render(scene, camera);
+  }
+  animGlobe();
+}
+
+/* ══════════════════════════════════════════
+   SCROLL OBSERVER
+══════════════════════════════════════════ */
+function initScrollObserver() {
+  const els = document.querySelectorAll('.fade-up,.check-item,.flag-item');
+  const obs = new IntersectionObserver(entries => {
+    entries.forEach(e => {
+      if (e.isIntersecting) {
+        const d = parseInt(e.target.dataset.delay||0) || (Array.from(e.target.parentNode.children).indexOf(e.target)*80);
+        setTimeout(()=>e.target.classList.add('visible','reveal'), d);
+        obs.unobserve(e.target);
+      }
+    });
+  }, { threshold:0.1 });
+  els.forEach(el=>obs.observe(el));
+
+  // Parallax on scroll
+  window.addEventListener('scroll', ()=>{
+    const sy = window.scrollY;
+    const mc = document.getElementById('matrix-canvas');
+    if (mc) mc.style.transform = `translateY(${sy*0.15}px)`;
+  });
+
+  // Scan section trigger
+  const scanObs = new IntersectionObserver(entries=>{
+    if(entries[0].isIntersecting) { runScan(); scanObs.disconnect(); }
+  },{threshold:0.3});
+  const scanEl=document.getElementById('scan-section');
+  if(scanEl) scanObs.observe(scanEl);
+}
+
+/* ══════════════════════════════════════════
+   THREAT STATS
+══════════════════════════════════════════ */
+let statsActive = false;
+let statAttacks = 12847221, statPhish = 3442991, statPw = 987223, statData = 4821;
+
+function initStats() {
+  const statsObs = new IntersectionObserver(entries=>{
+    if(entries[0].isIntersecting && !statsActive) {
+      statsActive = true;
+      animateCount('stat-attacks', 0, statAttacks, 2200);
+      animateCount('stat-phish', 0, statPhish, 2500);
+      animateCount('stat-pw', 0, statPw, 1800);
+      animateCount('stat-data', 0, statData, 1500);
+      startLiveCounting();
+      statsObs.disconnect();
+    }
+  },{threshold:0.2});
+  statsObs.observe(document.getElementById('threat-monitor'));
+}
+
+function animateCount(id, start, end, dur) {
+  const el=document.getElementById(id);
+  const step=Math.ceil((end-start)/(dur/16));
+  let cur=start;
+  const iv=setInterval(()=>{
+    cur=Math.min(cur+step,end);
+    el.textContent=cur.toLocaleString();
+    if(cur>=end) clearInterval(iv);
+  },16);
+}
+
+function startLiveCounting() {
+  setInterval(()=>{
+    statAttacks += Math.floor(Math.random()*8+2);
+    statPhish   += Math.floor(Math.random()*5+1);
+    statPw      += Math.floor(Math.random()*3+1);
+    statData    += Math.floor(Math.random()*2);
+    const aEl=document.getElementById('stat-attacks');
+    const pEl=document.getElementById('stat-phish');
+    const wEl=document.getElementById('stat-pw');
+    const dEl=document.getElementById('stat-data');
+    if(aEl){aEl.textContent=statAttacks.toLocaleString(); pulseCard(aEl);}
+    if(pEl) pEl.textContent=statPhish.toLocaleString();
+    if(wEl) wEl.textContent=statPw.toLocaleString();
+    if(dEl) dEl.textContent=statData.toLocaleString();
+    document.getElementById('stat-attacks-rate').textContent=(Math.floor(Math.random()*12+3));
+    addLogLine();
+  }, 800);
+}
+
+function pulseCard(el) {
+  const card=el.closest('.stat-card');
+  if(!card) return;
+  card.classList.add('pulse');
+  setTimeout(()=>card.classList.remove('pulse'),600);
+}
+
+const logMessages=[
+  ['SYN flood from','→ Firewall blocked'],['Brute-force attempt on','→ Rate limited'],
+  ['Phishing link clicked by user in','→ Credential harvest attempt'],
+  ['Ransomware beacon from','→ Isolated and quarantined'],
+  ['SQL injection probe from','→ WAF blocked'],
+  ['Credential stuffing from','→ 2FA triggered'],
+  ['Malware dropper from','→ Sandbox detonated'],
+];
+const countries=['Russia','China','Nigeria','Romania','Brazil','Ukraine','Iran','N. Korea','Belarus','Indonesia'];
+
+function addLogLine() {
+  const feed=document.getElementById('log-feed');
+  if(!feed) return;
+  const now=new Date();
+  const t=`${String(now.getHours()).padStart(2,'0')}:${String(now.getMinutes()).padStart(2,'0')}:${String(now.getSeconds()).padStart(2,'0')}`;
+  const m=logMessages[Math.floor(Math.random()*logMessages.length)];
+  const c=countries[Math.floor(Math.random()*countries.length)];
+  const line=document.createElement('div');
+  line.className='log-line';
+  line.innerHTML=`<span class="log-time">[${t}]</span><span class="log-msg">${m[0]} <span class="log-country">${c}</span> ${m[1]}</span>`;
+  feed.insertBefore(line,feed.firstChild);
+  while(feed.children.length>8) feed.removeChild(feed.lastChild);
+}
+
+function initAlerts() {
+  const alerts=['ap1','ap2','ap3','ap4'];
+  let i=0;
+  setInterval(()=>{
+    const el=document.getElementById(alerts[i%4]);
+    if(el){ el.classList.remove('show'); void el.offsetWidth; el.classList.add('show'); }
+    i++;
+  },3000);
+}
+
+/* ══════════════════════════════════════════
+   SYSTEM SCAN TERMINAL
+══════════════════════════════════════════ */
+const scanLines=[
+  ['prompt','root@hacklab:~$ nmap -sV --script vuln target_device'],
+  ['info','Starting Nmap scan...'],
+  ['info','Scanning ports...............................................'],
+  ['closed','Port 21 (FTP): CLOSED ✓'],
+  ['open','Port 22 (SSH): OPEN ⚠'],
+  ['closed','Port 23 (Telnet): CLOSED ✓'],
+  ['open','Port 80 (HTTP): OPEN'],
+  ['secure','Port 443 (HTTPS): SECURE ✓'],
+  ['open','Port 8080 (Dev): OPEN ⚠'],
+  ['warn','[!] Vulnerability detected: SSH brute-force possible'],
+  ['warn','[!] HTTP not redirecting to HTTPS — data exposed'],
+  ['warn','[!] Open port 8080 could leak dev environment'],
+  ['ok','Injecting awareness module...'],
+  ['ok','[✔] SCAN COMPLETE — 3 warnings, 2 open risks'],
+];
+let scanRunning=false;
+
+async function runScan(){
+  if(scanRunning) return;
+  scanRunning=true;
+  const term=document.getElementById('scan-terminal');
+  const btn=document.getElementById('scan-btn');
+  if(btn) btn.style.display='none';
+  term.innerHTML='<div style="font-size:10px;color:var(--dim);margin-bottom:12px;letter-spacing:2px;padding-top:4px">Executing scan...</div>';
+  for(const [type,text] of scanLines){
+    await delay(280+Math.random()*200);
+    const div=document.createElement('div');
+    div.className='scan-line';
+    let color=type==='prompt'?'var(--cyan)':type==='warn'?'var(--red)':type==='ok'?'var(--green)':type==='open'?'var(--yellow)':type==='secure'?'var(--green)':'var(--dim)';
+    div.innerHTML=`<span style="color:${color}">${type==='prompt'?'<span style="color:var(--dim)">$</span> ':''}</span><span style="color:${color}">${text}</span>`;
+    term.appendChild(div);
+    await delay(20);
+    div.classList.add('active');
+    term.scrollTop=term.scrollHeight;
+  }
+  // blinking cursor
+  const cur=document.createElement('div');
+  cur.className='scan-line active';
+  cur.innerHTML='<span class="cursor-blink">█</span>';
+  term.appendChild(cur);
+  if(btn){ btn.textContent='▸ RE-RUN SCAN'; btn.style.display='block'; btn.onclick=()=>{ scanRunning=false; term.innerHTML=''; runScan(); }; }
+}
+
+/* ══════════════════════════════════════════
+   FIREWALL SCENE
+══════════════════════════════════════════ */
+let fwRunning=false;
+async function runFirewall(){
+  if(fwRunning) return; fwRunning=true;
+  const virus=document.getElementById('fw-virus');
+  const arrow=document.getElementById('fw-arrow');
+  const shield=document.getElementById('fw-shield');
+  const status=document.getElementById('fw-status');
+  // reset
+  virus.style.transform=''; arrow.style.opacity='0'; shield.textContent='🛡';
+  shield.style.transform=''; status.style.opacity='0';
+  await delay(200);
+  // animate
+  arrow.style.opacity='1';
+  virus.style.transform='translateX(60px)';
+  await delay(600);
+  virus.style.transform='translateX(110px)';
+  await delay(400);
+  // shield activates
+  shield.textContent='🛡'; shield.style.transform='scale(1.4)';
+  shield.style.textShadow='0 0 30px var(--green)';
+  await delay(300);
+  // explosion
+  virus.textContent='💥'; virus.style.transform='translateX(100px) scale(1.5)';
+  status.style.cssText='opacity:1;color:var(--green);font-family:Orbitron,monospace;font-size:13px;letter-spacing:3px;bottom:12px;text-shadow:0 0 10px var(--green);';
+  status.textContent='✅ THREAT BLOCKED';
+  await delay(800);
+  shield.style.transform=''; shield.style.textShadow='';
+  await delay(600);
+  virus.textContent='🦠'; virus.style.transform=''; virus.style.filter='';
+  arrow.style.opacity='0'; status.style.opacity='0';
+  fwRunning=false;
+}
+
+/* ══════════════════════════════════════════
+   PASSWORDS
+══════════════════════════════════════════ */
+async function crackWeak(){
+  const bar=document.getElementById('weak-bar'), result=document.getElementById('weak-result'), shield=document.getElementById('weak-shield');
+  shield.textContent='💔'; result.textContent='CRACKING...';
+  for(let i=0;i<=100;i++){ await delay(3); bar.style.width=i+'%'; }
+  shield.textContent='💥';
+  result.textContent='⚡ CRACKED IN 0.2 SECONDS — "123456" is one of 10 million leaked passwords!';
+  setTimeout(()=>{ shield.textContent='🔓'; },600);
+}
+
+async function testStrong(){
+  const bar=document.getElementById('strong-bar'), result=document.getElementById('strong-result'), shield=document.getElementById('strong-shield');
+  result.textContent='ANALYZING...'; shield.textContent='⏳';
+  for(let i=0;i<=100;i++){ await delay(11); bar.style.width=i+'%'; }
+  shield.textContent='🛡'; shield.style.textShadow='0 0 20px #00ff41';
+  result.textContent='✅ CRACK TIME: 200+ YEARS — Length + symbols + mixed case = Fort Knox!';
+}
+
+function testMyPassword(){
+  const val=document.getElementById('pw-test-input').value;
+  const fill=document.getElementById('pw-fill'), text=document.getElementById('pw-result-text');
+  if(!val){ text.textContent='Please type a password first.'; text.style.color='#666'; return; }
+  let score=0,tips=[];
+  if(val.length>=12)score+=25; else tips.push('use 12+ characters');
+  if(val.length>=16)score+=10;
+  if(/[A-Z]/.test(val))score+=15; else tips.push('add uppercase letters');
+  if(/[a-z]/.test(val))score+=10;
+  if(/[0-9]/.test(val))score+=15; else tips.push('add numbers');
+  if(/[^a-zA-Z0-9]/.test(val))score+=25; else tips.push('add symbols (!@#$...)');
+  if(['123456','password','qwerty','abc123','letmein','iloveyou'].includes(val.toLowerCase())){score=0;tips=['this is a known common password — never use it!'];}
+  score=Math.min(score,100);
+  fill.style.width=score+'%';
+  const colors=[[0,'#ff003c'],[40,'#ff6600'],[60,'#ffd600'],[80,'#00ff41']];
+  const color=colors.slice().reverse().find(([t])=>score>=t)[1];
+  fill.style.background=color; fill.style.boxShadow=`0 0 8px ${color}`;
+  const labels=[[0,'VERY WEAK — cracked instantly'],[30,'WEAK — brute-forceable'],[55,'MODERATE — improve it'],[75,'STRONG — good protection'],[90,'VERY STRONG — excellent!']];
+  const label=labels.slice().reverse().find(([t])=>score>=t)[1];
+  text.style.color=color;
+  text.innerHTML=`${label}${tips.length?` | Tip: ${tips[0]}`:''}`;
+}
+
+document.getElementById('pw-test-input').addEventListener('keydown', e=>{ if(e.key==='Enter') testMyPassword(); });
+
+/* ══════════════════════════════════════════
+   QUIZ
+══════════════════════════════════════════ */
+const questions=[
+  { q:'Which password is the strongest?', opts:['123456','iloveyou','T3ch@Secure2026!','MyBirthday1990'], answer:2, explain:'T3ch@Secure2026! wins — it has 16 characters, uppercase, lowercase, numbers, and symbols. Length + complexity = nearly uncrackable.' },
+  { q:'You receive an email from "paypa1@secure-verify.net" asking you to log in urgently. What do you do?', opts:['Click the link — looks legit','Check the domain carefully and go to paypal.com directly','Reply with your password','Ignore it and hope for the best'], answer:1, explain:'Always navigate directly to official websites — never through email links. "paypa1" with a number "1" is a classic typosquatting trick.' },
+  { q:'Which action best protects your account if your password leaks?', opts:['Change your password eventually','Enable 2FA immediately','Use the same password elsewhere','Log out and hope for the best'], answer:1, explain:'2FA (Two-Factor Authentication) means even with your password, an attacker cannot log in without your second factor. Enable it now.' },
+  { q:'What is a phishing attack?', opts:['A physical break-in to steal computers','A trick to make you reveal info willingly','A virus that encrypts files','A type of firewall attack'], answer:1, explain:'Phishing is social engineering — attackers trick you psychologically into handing over credentials. You do the work for them without realizing it.' },
+  { q:'Which of these is safest on public Wi-Fi?', opts:['Online banking without VPN','Streaming with a VPN','Checking email without any protection','Sharing your screen publicly'], answer:1, explain:'A VPN encrypts your traffic even on public networks. Without it, anyone on the same network can potentially intercept your data.' },
+];
+let qIndex=0, qScore=0;
+
+function initQuiz(){
+  loadQuestion();
+}
+
+function loadQuestion(){
+  if(qIndex>=questions.length){
+    document.getElementById('quiz-box').innerHTML=`
+      <div style="text-align:center;font-family:Orbitron,monospace;font-size:clamp(18px,3vw,32px);color:var(--cyan);margin-bottom:20px">QUIZ COMPLETE</div>
+      <div style="text-align:center;font-size:clamp(28px,5vw,56px);font-family:Orbitron,monospace;color:${qScore>=4?'var(--green)':'var(--yellow)'};text-shadow:0 0 20px currentColor">${qScore}/${questions.length}</div>
+      <div style="text-align:center;font-family:Rajdhani,sans-serif;font-size:18px;color:#88cc88;margin-top:14px">${qScore===5?'PERFECT SCORE — You think like a security analyst! 🛡':qScore>=3?'SOLID KNOWLEDGE — Keep learning and you\'ll be untouchable! 💪':'KEEP TRAINING — Review the sections above and try again! 🔄'}</div>
+      <button class="pw-btn" onclick="qIndex=0;qScore=0;initQuiz();" style="margin-top:24px">▸ RETRY QUIZ</button>`;
+    return;
+  }
+  const q=questions[qIndex];
+  document.getElementById('quiz-q').textContent=`Q${qIndex+1}/${questions.length}: ${q.q}`;
+  document.getElementById('quiz-opts').innerHTML=q.opts.map((o,i)=>
+    `<button class="quiz-opt" onclick="answerQ(${i})">${String.fromCharCode(65+i)}. ${o}</button>`).join('');
+  document.getElementById('quiz-fb').className='quiz-feedback';
+  document.getElementById('quiz-fb').textContent='';
+  document.getElementById('quiz-score').textContent=`Score: ${qScore}/${qIndex}`;
+  const nextBtn=document.getElementById('quiz-next');
+  if(nextBtn) nextBtn.style.display='none';
+}
+
+function answerQ(idx){
+  const q=questions[qIndex];
+  const opts=document.querySelectorAll('.quiz-opt');
+  opts.forEach(o=>{ o.classList.add('used'); o.style.pointerEvents='none'; });
+  const fb=document.getElementById('quiz-fb');
+  if(idx===q.answer){
+    opts[idx].classList.add('correct');
+    fb.textContent='✅ CORRECT! '+q.explain;
+    fb.className='quiz-feedback good show';
+    qScore++;
+  } else {
+    opts[idx].classList.add('wrong');
+    opts[q.answer].classList.add('correct');
+    fb.textContent='❌ INCORRECT. '+q.explain;
+    fb.className='quiz-feedback bad show';
+    // red flash
+    const f=document.getElementById('glitch-flash');
+    f.style.background='#ff003c'; f.style.opacity='0.15';
+    setTimeout(()=>{ f.style.opacity='0'; },200);
+  }
+  document.getElementById('quiz-score').textContent=`Score: ${qScore}/${qIndex+1}`;
+  const nextBtn=document.getElementById('quiz-next');
+  if(nextBtn){ nextBtn.style.display='block'; nextBtn.textContent=qIndex+1<questions.length?'NEXT QUESTION ›':'SEE RESULTS ›'; }
+  qIndex++;
+}
+
+function nextQuestion(){ loadQuestion(); }
+
+/* ══════════════════════════════════════════
+   PHISHING FLAGS
+══════════════════════════════════════════ */
+const flags=[
+  ['01','Fake domain: "paypa1-verify.com" — notice "1" instead of "l". Scammers use typosquatting to impersonate real brands.'],
+  ['02','URGENT threats — "24 HOURS or permanently deleted" triggers panic, bypassing rational thinking. Classic manipulation.'],
+  ['03','Vague greeting: "Dear Valued Customer" — real companies always use your actual name.'],
+  ['04','Suspicious CTA — legitimate platforms never demand you verify via email links under threat of deletion.'],
+  ['05','Unsolicited message — you took no action. Real security alerts match something you did.'],
+];
+
+function revealFlags(){
+  document.getElementById('reveal-btn').style.display='none';
+  const list=document.getElementById('flags-list');
+  list.innerHTML='<h3 style="font-family:Orbitron,monospace;font-size:13px;letter-spacing:3px;color:var(--red);margin-bottom:18px">⚠ 5 RED FLAGS DETECTED</h3>';
+  flags.forEach(([num,text],i)=>{
+    const el=document.createElement('div');
+    el.className='flag-item';
+    el.innerHTML=`<span class="flag-num">${num}</span><span class="flag-text">${text}</span>`;
+    list.appendChild(el);
+    setTimeout(()=>el.classList.add('visible'),i*180);
+  });
+}
+
+/* ══════════════════════════════════════════
+   CHECKLIST + RISK METER
+══════════════════════════════════════════ */
+let checkedCount=0;
+
+function toggleCheck(el){
+  el.classList.toggle('checked');
+  checkedCount=document.querySelectorAll('.check-item.checked').length;
+  const score=document.getElementById('checklist-score');
+  if(checkedCount===7){ score.style.color='var(--green)'; score.textContent='7 / 7 ✅ FULLY SECURED — EXCELLENT!'; score.style.textShadow='0 0 15px var(--green)'; }
+  else if(checkedCount>=4){ score.style.color='var(--yellow)'; score.textContent=`${checkedCount} / 7 SECURED`; score.style.textShadow='none'; }
+  else { score.style.color='var(--dim)'; score.textContent=`${checkedCount} / 7 SECURED`; score.style.textShadow='none'; }
+  updateRiskMeter(checkedCount);
+}
+
+function updateRiskMeter(n){
+  const fill=document.getElementById('risk-fill');
+  const text=document.getElementById('risk-text');
+  const pct=Math.max(0,100-n*(100/7));
+  const levels=[[0,'SECURE','#00ff41'],[15,'LOW','#88ff00'],[30,'MEDIUM','#ffd600'],[60,'HIGH','#ff6600'],[80,'CRITICAL','#ff003c']];
+  const lvl=levels.slice().reverse().find(([t])=>pct>=t);
+  const blocks='█'.repeat(Math.round(pct/10))+'░'.repeat(10-Math.round(pct/10));
+  if(fill){ fill.style.width=pct+'%'; fill.style.background=`linear-gradient(90deg,${lvl[2]},${lvl[2]}88)`; }
+  if(text){ text.style.color=lvl[2]; text.textContent=`${blocks} ${lvl[1]}${n===7?' — MAXIMUM PROTECTION ACHIEVED':' — Check more items to reduce risk'}`; }
+}
+
+/* ══════════════════════════════════════════
+   EMERGENCY ALERT
+══════════════════════════════════════════ */
+function triggerEmergency(){
+  const ov=document.getElementById('emergency-overlay');
+  ov.classList.add('active');
+  // flash
+  const f=document.getElementById('glitch-flash');
+  f.style.background='#ff003c'; f.style.opacity='0.3';
+  setTimeout(()=>{ f.style.opacity='0'; f.style.background='var(--green)'; },300);
+}
+
+function closeEmergency(){
+  document.getElementById('emergency-overlay').classList.remove('active');
+}
+
+/* ══════════════════════════════════════════
+   PARANOID MODE
+══════════════════════════════════════════ */
+let paranoid=false;
+function toggleParanoid(){
+  paranoid=!paranoid;
+  document.body.classList.toggle('paranoid',paranoid);
+  const btn=document.getElementById('mode-btn');
+  btn.textContent=paranoid?'☀ NORMAL MODE':'☠ PARANOID MODE';
+  btn.classList.toggle('active',paranoid);
+  if(paranoid){
+    const f=document.getElementById('glitch-flash');
+    f.style.background='#ff003c'; f.style.opacity='0.2';
+    setTimeout(()=>{ f.style.opacity='0'; },400);
+  }
+}
+
+/* ══════════════════════════════════════════
+   GLITCH HOVER ON HEADINGS
+══════════════════════════════════════════ */
+document.addEventListener('DOMContentLoaded',()=>{
+  document.querySelectorAll('h2[data-glitch]').forEach(h=>{
+    const orig=h.innerHTML;
+    const chars='@#$%^&*!<>/\\|{}[]0123456789';
+    h.addEventListener('mouseenter',()=>{
+      let count=0;
+      const iv=setInterval(()=>{
+        if(count++>6){ h.innerHTML=orig; clearInterval(iv); return; }
+        h.innerHTML=orig.replace(/[A-Za-z]/g,c=>Math.random()<0.25?chars[Math.floor(Math.random()*chars.length)]:c);
+      },60);
+    });
+  });
+});
+
+/* ══════════════════════════════════════════
+   START
+══════════════════════════════════════════ */
+window.addEventListener('load', runIntro);
+</script>
+</body>
+</html>
